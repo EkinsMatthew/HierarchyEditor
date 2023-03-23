@@ -4,46 +4,33 @@ Created on Wed Mar 22 12:09:25 2023
 
 @author: Matt
 """
+from __future__ import annotations
+import typing
+
 import tkinter
 import tkinter.filedialog
 import pygame
+import Colors
+from Window import Window
+from ToolButton import ToolButton
 
 
-class CCHEditor:
-    # Colors of solarized
-    colors = {
-        "Content": [
-            "#586e75",
-            "#657b83",
-            "#839496",
-            "#93a1a1",
-        ],
-        "Background": {
-            "Light": ["#eee8d5", "#fdf6e3"],
-            "Dark": ["#002b36", "#073642"],
-        },
-        "Accent": [
-            "#b58900",
-            "#cb4b16",
-            "#dc322f",
-            "#d33682",
-            "#6c71c4",
-            "#268bd2",
-            "#2aa198",
-            "#859900",
-        ],
-    }
+class CCHEditor(Window):
+    """
+    Test doc.
+    """
 
     # Version number
     VERSION = "0.0.1"
 
     def __init__(
         self,
-        aspect_ratio=(16, 9),
-        scale_factor=80,
-        FPS=60,
-        debug_mode=False,
-        light_theme=True,
+        aspect_ratio: tuple[int, int] = (16, 9),
+        scale_factor: int = 80,
+        font_name: str = "consolas",
+        theme: str = "light",
+        FPS: int = 60,
+        debug_mode: bool = False,
     ):
         """
         Parameters
@@ -62,6 +49,10 @@ class CCHEditor:
         debug_mode : bool, optional
             If the program should be run in debug mode. Will show various
             diagnostics in the console on tick. The default is False.
+        theme : str, optional
+            The theme of the color pallete. Follows the Solarized standard.
+            Currently supported values are "light" and "dark". The default is
+            light.
 
         Returns
         -------
@@ -72,34 +63,28 @@ class CCHEditor:
         # Initialize pygame
         pygame.init()
 
-        # Store our passed vars
-
-        # Screen sizes
-        self.aspect_ratio = aspect_ratio
-        self.scale_factor = scale_factor
+        # Construct the window with the superclass constructor
+        super(CCHEditor, self).__init__(
+            aspect_ratio, scale_factor, font_name, theme=theme
+        )
 
         # FPS cap
         self.FPS = FPS
         # Debugg flag *NOT CURRENTLY USED*
         self.debug_mode = debug_mode
 
-        if light_theme:
-            # Light background color
-            background_color = CCHEditor.colors["Background"]["Light"][0]
-        else:
-            # Dark background color
-            background_color = CCHEditor.colors["Background"]["Dark"][0]
-
         # Initialize the window
-        self.initiate_window(background_color=background_color)
+        self._initialize_window()
 
         # Start the clock
-        self.start_clock()
+        self._start_clock()
 
-        # Define our default font
-        self.create_default_font()
+        # Create our first test button
+        self.button = ToolButton("File", (0, 0), print, self)
 
-    def initiate_window(self, background_color):
+        self.button.draw(self.screen)
+
+    def _initialize_window(self):
         """
         Create the window for the game to take place in. Here we determine the
         size of the window.
@@ -113,33 +98,26 @@ class CCHEditor:
         pygame Screen that was constructed with the parameters defined above.
 
         """
-        # Calculate the dimensions as the multiplication of the aspect ration
-        # by the scale factor.
-        self.dimensions = tuple([x * self.scale_factor for x in self.aspect_ratio])
         # Set the screen as a new display with the dimensions stated
-        self.screen = pygame.display.set_mode(self.dimensions)
+        self.screen = pygame.display.set_mode(self.window_size)
 
         # Set the original background color
-        self.screen.fill(background_color)
+        self.screen.fill(self.background_color)
 
-    def get_screen(self):
+    def get_screen(self) -> pygame.Surface:
         return self.screen
 
-    def start_clock(self):
+    def _start_clock(self):
         # Out clock for frame rate and update
         self.clock = pygame.time.Clock()
 
-    def create_default_font(self, font_name="consolas"):
-        # Define the font that we will be using to write to the screen
-        pygame.font.init()
-        # Get the place on this machine where the font is stored
-        font_loc = pygame.font.match_font(font_name)
-        # Create our font
-        self.font = pygame.font.Font(font_loc, 14)
+    def get_clock(self) -> pygame.time.Clock:
+        return self.clock
+
+    def get_font(self) -> pygame.font.Font:
+        return self.font
 
     def tick(self):
-        f_name = ""
-
         # Process user inputs.
         for event in pygame.event.get():
             # Check for QUIT event
@@ -149,16 +127,20 @@ class CCHEditor:
             # Check for various key-presses
             elif event.type == pygame.KEYUP:
                 if event.key == pygame.K_SPACE:
-                    f_name = self.prompt_for_file()
+                    f_name = self._prompt_for_file()
 
         # The current location of the mouse
         mouse_loc = pygame.mouse.get_pos()
 
+        if pygame.mouse.get_pressed(num_buttons=5)[0]:
+            if self.button.get_rect().collidepoint(mouse_loc):
+                self.button.press()
+
         # Logical updates
-        self.screen.set_at(mouse_loc, CCHEditor.colors["Accent"][4])
+        self.screen.set_at(mouse_loc, Colors.get_color("Magenta"))
 
         pygame.display.set_caption(
-            f"CCH Editor {self.VERSION} Open file: {f_name} Mouse position: {mouse_loc}"
+            f"CCH Editor {self.VERSION} Mouse position: {mouse_loc}"
         )
 
         # Update the display
@@ -166,7 +148,7 @@ class CCHEditor:
 
         self.clock.tick(self.FPS)
 
-    def prompt_for_file(self):
+    def _prompt_for_file(self):
         # Create a Tk window
         tk_wind = tkinter.Tk()
         # Remove from view since we don't want it for graphics
@@ -181,13 +163,10 @@ class CCHEditor:
 
 def main():
     # Create the editor
-    editor = CCHEditor(scale_factor=120, light_theme=False)
+    editor = CCHEditor(scale_factor=120, theme="dark")
 
     # Create the main game window
     screen = editor.get_screen()
-
-    # Create a test sprite and draw it on the screen
-    test_sprite = pygame.sprite.Sprite()
 
     # game loop
     while True:
